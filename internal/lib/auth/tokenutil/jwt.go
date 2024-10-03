@@ -1,6 +1,7 @@
 package tokenutil
 
 import (
+	"context"
 	"fmt"
 	"github.com/diproducts/application-tracker-go/internal/domain/models"
 	"github.com/golang-jwt/jwt/v5"
@@ -10,8 +11,8 @@ import (
 )
 
 type tokenRepository interface {
-	BlacklistTokenByID(tokenStr string) error
-	IsBlacklisted(tokenStr string) (bool, error)
+	BlacklistTokenByID(ctx context.Context, userID int64, tokenID string, expiry time.Time) error
+	IsBlacklisted(ctx context.Context, tokenID string) (bool, error)
 }
 
 type JWTTokenManager struct {

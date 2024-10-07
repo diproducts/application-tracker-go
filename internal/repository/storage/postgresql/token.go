@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/diproducts/application-tracker-go/internal/config"
 	"github.com/diproducts/application-tracker-go/internal/repository/storage"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -14,33 +13,16 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const uniqueViolationErrorCode = pq.ErrorCode("23505")
-
-type TokenStorage struct {
+type TokenRepository struct {
 	db *sqlx.DB
 }
 
-func NewTokenStorage(dbCfg *config.Database) (*TokenStorage, error) {
-	const op = "storage.postgresql.NewTokenStorage"
-
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s",
-		dbCfg.Host,
-		dbCfg.Port,
-		dbCfg.User,
-		dbCfg.Password,
-		dbCfg.DBName,
-	)
-
-	db, err := sqlx.Open("postgres", connStr)
-	if err != nil {
-		return nil, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return &TokenStorage{db: db}, nil
+func NewTokenRepository(db *sqlx.DB) *TokenRepository {
+	return &TokenRepository{db: db}
 }
 
 // BlacklistToken stores user_id, token_id and expiry time in the token_blacklist table
-func (ts *TokenStorage) BlacklistToken(ctx context.Context, userID int64, tokenID string, expiry time.Time) error {
+func (ts *TokenRepository) BlacklistToken(ctx context.Context, userID int64, tokenID string, expiry time.Time) error {
 	const op = "storage.postgresql.BlacklistToken"
 
 	stmt, err := ts.db.PrepareContext(
@@ -65,8 +47,8 @@ func (ts *TokenStorage) BlacklistToken(ctx context.Context, userID int64, tokenI
 	return nil
 }
 
-// IsBlacklisted checks if an
-func (ts *TokenStorage) IsBlacklisted(ctx context.Context, tokenID string) (bool, error) {
+// IsBlacklisted checks if the token is blacklisted.
+func (ts *TokenRepository) IsBlacklisted(ctx context.Context, tokenID string) (bool, error) {
 	const op = "storage.postgresql.BlacklistToken"
 
 	stmt, err := ts.db.PrepareContext(ctx, "SELECT user_id FROM token_blacklist WHERE token_id=?")

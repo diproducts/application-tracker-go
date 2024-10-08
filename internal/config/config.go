@@ -16,6 +16,7 @@ type Database struct {
 	Password string `yaml:"password" env:"DATABASE_PASSWORD"`
 	Host     string `yaml:"host" env:"DATABASE_HOST"`
 	Port     string `yaml:"port" env:"DATABASE_PORT"`
+	SSLMode  string `yaml:"sslmode" env:"DATABASE_SSLMODE"`
 }
 
 func MustLoad() *Config {

@@ -11,14 +11,15 @@ import (
 const uniqueViolationErrorCode = pq.ErrorCode("23505")
 
 func InitDB(dbCfg *config.Database) (*sqlx.DB, error) {
-	const op = "storage.postgresql.DB"
+	const op = "storage.postgresql.InitDB"
 
-	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s",
+	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		dbCfg.Host,
 		dbCfg.Port,
 		dbCfg.User,
 		dbCfg.Password,
 		dbCfg.DBName,
+		dbCfg.SSLMode,
 	)
 
 	db, err := sqlx.Open("postgres", connStr)

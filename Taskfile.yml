@@ -1,0 +1,8 @@
+version: "3"
+
+tasks:
+  migrate:
+    env:
+      CONFIG_PATH: ./config/local.yaml
+    cmds:
+      - go run ./cmd/migrator --migrations-path=./migrations

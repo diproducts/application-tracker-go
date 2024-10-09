@@ -20,8 +20,8 @@ type userRepository interface {
 }
 
 type passwordHasher interface {
-	Generate(ctx context.Context, password string) (string, error)
-	Compare(ctx context.Context, password string, hashedPassword string) (bool, error)
+	Generate(password string) (string, error)
+	Compare(hashedPassword string, password string) error
 }
 
 type UserUsecase struct {
@@ -49,7 +49,7 @@ func (u *UserUsecase) CreateUser(ctx context.Context, email, password, name stri
 
 	log := u.logger.With(slog.String("op", op))
 
-	hashedPassword, err := u.passwordHasher.Generate(ctx, password)
+	hashedPassword, err := u.passwordHasher.Generate(password)
 	if err != nil {
 		log.Error("failed to generate password hash", sl.Err(err))
 

@@ -4,10 +4,13 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"log"
 	"os"
+	"time"
 )
 
 type Config struct {
-	DB Database
+	Env        string     `yaml:"env" env-required:"true"`
+	DB         Database   `yaml:"db"`
+	HTTPServer HTTPServer `yaml:"http_server"`
 }
 
 type Database struct {
@@ -17,6 +20,12 @@ type Database struct {
 	Host     string `yaml:"host" env:"DATABASE_HOST"`
 	Port     string `yaml:"port" env:"DATABASE_PORT"`
 	SSLMode  string `yaml:"sslmode" env:"DATABASE_SSLMODE"`
+}
+
+type HTTPServer struct {
+	Address     string        `yaml:"address" env-default:"localhost:8080"`
+	Timeout     time.Duration `yaml:"timeout"`
+	IdleTimeout time.Duration `yaml:"idle_timeout"`
 }
 
 func MustLoad() *Config {

@@ -22,23 +22,25 @@ func NewUserRepository(db *sqlx.DB) *UserRepository {
 func (ur *UserRepository) SaveUser(ctx context.Context, user *models.User) (int64, error) {
 	const op = "storage.postgresql.SaveUser"
 
-	stmt, err := ur.db.PreparexContext(ctx, "INSERT INTO users(email, password, name) VALUES (?, ?, ?)")
+	stmt, err := ur.db.PreparexContext(
+		ctx,
+		"INSERT INTO users(email, password, name) VALUES ($1, $2, $3) RETURNING id",
+	)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 
-	res, err := stmt.ExecContext(ctx, user.Email, user.HashedPassword, user.Name)
+	row := stmt.QueryRowxContext(ctx, user.Email, user.HashedPassword, user.Name)
+
+	// TODO: fix incrementing if even on error
+	// right now postgres increments id even if the user already exists
+	var id int64
+	err = row.Scan(&id)
 	if err != nil {
-		var pqErr pq.Error
-		if errors.As(err, &pqErr) && pqErr.Code == uniqueViolationErrorCode {
+		if err, ok := err.(*pq.Error); ok && err.Code == uniqueViolationErrorCode {
 			return 0, fmt.Errorf("%s: %w", op, storage.ErrUserAlreadyExists)
 		}
 
-		return 0, fmt.Errorf("%s: %w", op, err)
-	}
-
-	id, err := res.LastInsertId()
-	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
 	}
 

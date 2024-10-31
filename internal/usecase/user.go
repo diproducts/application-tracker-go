@@ -11,7 +11,8 @@ import (
 )
 
 var (
-	ErrUserAlreadyExists = errors.New("user already exists")
+	ErrUserAlreadyExists  = errors.New("user already exists")
+	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
 type userRepository interface {
@@ -24,20 +25,28 @@ type passwordHasher interface {
 	Compare(hashedPassword string, password string) error
 }
 
+type tokenManager interface {
+	CreateUserAccessToken(user *models.User) (string, error)
+	CreateUserRefreshToken(user *models.User) (string, error)
+}
+
 type UserUsecase struct {
 	passwordHasher passwordHasher
 	userRepository userRepository
+	tokenManager   tokenManager
 	logger         *slog.Logger
 }
 
 func NewUserUsecase(
 	passwordHasher passwordHasher,
 	userRepository userRepository,
+	tokenManager tokenManager,
 	logger *slog.Logger,
 ) *UserUsecase {
 	return &UserUsecase{
 		passwordHasher: passwordHasher,
 		userRepository: userRepository,
+		tokenManager:   tokenManager,
 		logger:         logger,
 	}
 }
@@ -76,4 +85,65 @@ func (u *UserUsecase) CreateUser(ctx context.Context, email, password, name stri
 	}
 
 	return userId, nil
+}
+
+// Login checks if user exists and checks if the password is correct.
+// Returns access/refresh token or error.
+func (u *UserUsecase) Login(ctx context.Context, email, password string) (models.Tokens, error) {
+	const op = "usecase.Login"
+
+	log := u.logger.With(slog.String("op", op))
+
+	user, err := u.userRepository.User(ctx, email)
+	if err != nil {
+		if errors.Is(err, storage.ErrUserNotFound) {
+			log.Info("user not found")
+
+			return models.Tokens{}, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+		}
+		log.Error("failed to get user from repository", sl.Err(err))
+
+		return models.Tokens{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	err = u.passwordHasher.Compare(user.HashedPassword, password)
+	if err != nil {
+		log.Info("incorrect password")
+
+		return models.Tokens{}, fmt.Errorf("%s: %w", op, ErrInvalidCredentials)
+	}
+
+	tokens, err := u.getTokens(&user)
+	if err != nil {
+		log.Error("failed to create user tokens", sl.Err(err))
+
+		return models.Tokens{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	log.Info("user successfully logged in")
+
+	return tokens, nil
+}
+
+// Refresh validates the refresh token and provides a new access token.
+func (u *UserUsecase) Refresh(ctx context.Context, refreshToken string) (models.Tokens, error) {
+	// TODO: implement
+	return models.Tokens{}, nil
+}
+
+func (u *UserUsecase) getTokens(user *models.User) (models.Tokens, error) {
+	accessToken, err := u.tokenManager.CreateUserAccessToken(user)
+	if err != nil {
+		return models.Tokens{}, err
+	}
+
+	refreshToken, err := u.tokenManager.CreateUserRefreshToken(user)
+	if err != nil {
+		return models.Tokens{}, err
+	}
+
+	return models.Tokens{
+		Access:  accessToken,
+		Refresh: refreshToken,
+	}, nil
 }

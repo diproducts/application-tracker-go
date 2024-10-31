@@ -2,7 +2,6 @@ package routers
 
 import (
 	"context"
-	"github.com/diproducts/application-tracker-go/internal/transport/http/handlers/user/create"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"log/slog"
@@ -11,7 +10,7 @@ import (
 func NewAPIRouter(
 	ctx context.Context,
 	log *slog.Logger,
-	userCreator create.UserCreator,
+	userManager userManager,
 ) chi.Router {
 	r := chi.NewRouter()
 
@@ -20,7 +19,7 @@ func NewAPIRouter(
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.URLFormat)
 
-	r.Mount("/auth", NewAuthRoutes(ctx, log, userCreator))
+	r.Mount("/auth", NewAuthRoutes(ctx, log, userManager))
 
 	return r
 }

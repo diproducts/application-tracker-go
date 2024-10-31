@@ -1,8 +1,9 @@
-package create
+package login
 
 import (
 	"context"
 	"errors"
+	"github.com/diproducts/application-tracker-go/internal/domain/models"
 	resp "github.com/diproducts/application-tracker-go/internal/lib/api/response"
 	"github.com/diproducts/application-tracker-go/internal/lib/logger/sl"
 	"github.com/diproducts/application-tracker-go/internal/usecase"
@@ -15,22 +16,22 @@ import (
 
 type request struct {
 	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required,min=8"`
-	Name     string `json:"name,omitempty"`
+	Password string `json:"password" validate:"required"`
 }
 
 type response struct {
 	resp.Response
-	Id int64 `json:"id,omitempty"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
-type userCreator interface {
-	CreateUser(ctx context.Context, email, password, name string) (int64, error)
+type loginProvider interface {
+	Login(ctx context.Context, email, password string) (models.Tokens, error)
 }
 
-func New(ctx context.Context, log *slog.Logger, userCreator userCreator) http.HandlerFunc {
+func New(ctx context.Context, log *slog.Logger, loginProvider loginProvider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "http.handlers.user.create"
+		const op = "http.handlers.user.login"
 
 		log = log.With(
 			slog.String("op", op),
@@ -60,32 +61,31 @@ func New(ctx context.Context, log *slog.Logger, userCreator userCreator) http.Ha
 			return
 		}
 
-		id, err := userCreator.CreateUser(ctx, req.Email, req.Password, req.Name)
+		tokens, err := loginProvider.Login(ctx, req.Email, req.Password)
 		if err != nil {
-			if errors.Is(err, usecase.ErrUserAlreadyExists) {
-				msg := "user with this email already exists"
-				log.Info(msg)
+			if errors.Is(err, usecase.ErrInvalidCredentials) {
+				log.Info("invalid credentials")
 
-				render.Status(r, http.StatusConflict)
-				render.JSON(w, r, resp.Error(msg))
+				render.Status(r, http.StatusForbidden)
+				render.JSON(w, r, resp.Error("invalid email or password"))
 
 				return
 			}
-			msg := "failed to create user"
-			log.Error(msg, sl.Err(err))
+			log.Error("failed to login user", sl.Err(err))
 
 			render.Status(r, http.StatusInternalServerError)
-			render.JSON(w, r, resp.Error(msg))
+			render.JSON(w, r, resp.Error("something went wrong"))
 
 			return
 		}
 
-		log.Info("new user created")
+		log.Info("user logged in")
 
-		render.Status(r, http.StatusCreated)
+		render.Status(r, http.StatusOK)
 		render.JSON(w, r, response{
-			Response: resp.OK(),
-			Id:       id,
+			Response:     resp.OK(),
+			AccessToken:  tokens.Access,
+			RefreshToken: tokens.Refresh,
 		})
 	}
 }

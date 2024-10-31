@@ -24,7 +24,7 @@ func (ur *UserRepository) SaveUser(ctx context.Context, user *models.User) (int6
 
 	stmt, err := ur.db.PreparexContext(
 		ctx,
-		"INSERT INTO users(email, password, name) VALUES ($1, $2, $3) RETURNING id",
+		"INSERT INTO users(email, password, name) VALUES ($1, $2, $3) RETURNING id;",
 	)
 	if err != nil {
 		return 0, fmt.Errorf("%s: %w", op, err)
@@ -50,7 +50,7 @@ func (ur *UserRepository) SaveUser(ctx context.Context, user *models.User) (int6
 func (ur *UserRepository) User(ctx context.Context, email string) (models.User, error) {
 	const op = "storage.postgresql.User"
 
-	stmt, err := ur.db.PreparexContext(ctx, "SELECT * FROM users WHERE email = ?")
+	stmt, err := ur.db.PreparexContext(ctx, "SELECT * FROM users WHERE email = $1;")
 	if err != nil {
 		return models.User{}, fmt.Errorf("%s: %w", op, err)
 	}

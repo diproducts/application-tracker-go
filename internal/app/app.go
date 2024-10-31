@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/diproducts/application-tracker-go/internal/config"
 	"github.com/diproducts/application-tracker-go/internal/lib/auth/password_hasher"
+	"github.com/diproducts/application-tracker-go/internal/lib/auth/tokenutil"
 	"github.com/diproducts/application-tracker-go/internal/lib/logger/sl"
 	"github.com/diproducts/application-tracker-go/internal/repository/storage/postgresql"
 	"github.com/diproducts/application-tracker-go/internal/transport/http/routers"
@@ -29,11 +30,19 @@ func Run(cfg *config.Config) {
 		log.Error("failed to init db connection", sl.Err(err))
 		return
 	}
+	defer db.Close()
 
 	passwordHasher := password_hasher.NewBcryptPasswordHasher()
 	userRepository := postgresql.NewUserRepository(db)
 
-	userUsecase := usecase.NewUserUsecase(passwordHasher, userRepository, log)
+	tokenManager := tokenutil.NewJWTTokenManager(
+		cfg.AccessSecret,
+		cfg.RefreshSecret,
+		cfg.AccessTokenTTL,
+		cfg.RefreshTokenTTL,
+	)
+
+	userUsecase := usecase.NewUserUsecase(passwordHasher, userRepository, tokenManager, log)
 
 	ctx := context.TODO()
 	router := chi.NewRouter()

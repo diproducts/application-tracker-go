@@ -8,9 +8,13 @@ import (
 )
 
 type Config struct {
-	Env        string     `yaml:"env" env-required:"true"`
-	DB         Database   `yaml:"db"`
-	HTTPServer HTTPServer `yaml:"http_server"`
+	Env             string        `yaml:"env" env-required:"true"`
+	AccessSecret    string        `yaml:"access_secret" env:"ACCESS_SECRET" env-required:"true"`
+	RefreshSecret   string        `yaml:"refresh_secret" env:"REFRESH_SECRET" env-required:"true"`
+	AccessTokenTTL  time.Duration `yaml:"access_token_ttl" env:"ACCESS_TOKEN_TTL" env-required:"true"`
+	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl" env:"REFRESH_TOKEN_TTL" env-required:"true"`
+	DB              Database      `yaml:"db"`
+	HTTPServer      HTTPServer    `yaml:"http_server"`
 }
 
 type Database struct {
